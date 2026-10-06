@@ -1,0 +1,126 @@
+# k6 ramp test, run inside the cluster so results are not skewed by port-forward or home internet.
+#
+# Assumes the llm-server chart is installed as release `llm` in namespace `default`
+# (Service llm-llm-server:8080). Change BASE_URL below if not.
+#
+#   kubectl apply -f loadtest/k6-job.yaml
+#   kubectl logs -f job/k6-llm-ramp          # summary prints at the end
+#   kubectl get hpa -w                       # in another terminal, watch replicas
+#   kubectl delete -f loadtest/k6-job.yaml   # before re-running (Job specs are immutable)
+#
+# Load shape vs capacity: each llm pod has 2 slots (--parallel 2). At 6 VUs, one pod queues
+# 4 requests ("deferred" in llama.cpp metrics), so CPU stays pegged and the HPA scales out;
+# at 3 pods the 6 slots match the 6 VUs.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-llm-ramp
+  labels:
+    app.kubernetes.io/name: k6-llm-ramp
+data:
+  llm-ramp.js: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+    import { Counter, Trend } from 'k6/metrics';
+
+    const BASE_URL = __ENV.BASE_URL;
+
+    // Decode speed per request, as reported by llama-server (timings.predicted_per_second).
+    const tokensPerSec = new Trend('llm_tokens_per_sec');
+    // Total generated tokens; the summary shows the rate, i.e. aggregate tokens/sec.
+    const completionTokens = new Counter('llm_completion_tokens');
+
+    export const options = {
+      scenarios: {
+        ramp: {
+          executor: 'ramping-vus',
+          startVUs: 0,
+          stages: [
+            { duration: '1m', target: 2 }, // warm up: one pod's 2 slots
+            { duration: '3m', target: 6 }, // overload one pod so the HPA reacts
+            { duration: '5m', target: 6 }, // hold while new pods become Ready
+            { duration: '1m', target: 0 }, // ramp down
+          ],
+          gracefulRampDown: '60s',
+        },
+      },
+      // kube-proxy load-balances per TCP connection, not per request. With keep-alive each VU
+      // would reuse its first connection and stay pinned to whichever pod it hit first, so pods
+      // added by the HPA would get no traffic. A new connection per request spreads the load.
+      noConnectionReuse: true,
+      summaryTrendStats: ['avg', 'med', 'p(95)', 'max'],
+    };
+
+    const prompts = [
+      'Explain what a Kubernetes HorizontalPodAutoscaler does in two sentences.',
+      'Summarize why CPU inference of small language models is memory-bound.',
+      'List three ways to reduce latency when serving a language model.',
+      'Describe the difference between a liveness probe and a readiness probe.',
+    ];
+
+    export default function () {
+      const body = JSON.stringify({
+        messages: [{ role: 'user', content: prompts[Math.floor(Math.random() * prompts.length)] }],
+        max_tokens: 64,
+        temperature: 0.2,
+      });
+      const res = http.post(`${BASE_URL}/v1/chat/completions`, body, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: '120s', // queued requests wait for a free slot
+      });
+
+      const ok = check(res, { 'status is 200': (r) => r.status === 200 });
+      if (!ok) return;
+
+      const json = res.json();
+      if (json.usage) completionTokens.add(json.usage.completion_tokens);
+      if (json.timings) tokensPerSec.add(json.timings.predicted_per_second);
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-llm-ramp
+  labels:
+    app.kubernetes.io/name: k6-llm-ramp
+spec:
+  backoffLimit: 0 # a failed load test should not silently re-run
+  activeDeadlineSeconds: 900 # 10 min test + slack; hard stop
+  ttlSecondsAfterFinished: 3600 # keep logs for an hour, then clean up
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k6-llm-ramp
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345 # k6 user in the official image
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k6
+          image: grafana/k6:2.3.0
+          args: ["run", "/scripts/llm-ramp.js"]
+          env:
+            - name: BASE_URL
+              value: http://llm-llm-server.default.svc.cluster.local:8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m # keep the load generator from stealing CPU the llm pods are measured on
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: k6-llm-ramp
