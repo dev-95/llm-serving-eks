@@ -1,0 +1,6 @@
+apiVersion: v2
+name: llm-server
+description: llama.cpp llama-server with a quantized Qwen2.5 1.5B model, CPU inference
+type: application
+version: 0.1.0
+appVersion: "b11429"

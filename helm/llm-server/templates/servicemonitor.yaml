@@ -1,0 +1,20 @@
+{{- if .Values.serviceMonitor.enabled }}
+# Needs the monitoring.coreos.com CRDs from kube-prometheus-stack; install that first.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "llm-server.fullname" . }}
+  labels:
+    {{- include "llm-server.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "llm-server.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

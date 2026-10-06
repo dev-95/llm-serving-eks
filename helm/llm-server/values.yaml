@@ -1,0 +1,56 @@
+image:
+  # ECR repo URL contains the account ID, so it is not committed. Pass it at install time:
+  #   --set image.repository=$(terraform -chdir=terraform output -raw ecr_repository_url)
+  repository: ""
+  tag: b11429-qwen2.5-1.5b-q4km
+  pullPolicy: IfNotPresent
+
+# Used only when autoscaling is disabled; otherwise the HPA owns the replica count.
+replicaCount: 1
+
+service:
+  type: ClusterIP # reach it with kubectl port-forward; switch to LoadBalancer only when needed (costs money)
+  port: 8080
+
+# Sized for m5.large nodes (2 vCPU / 8 GiB, ~1930m CPU and ~7.1 GiB allocatable).
+# The 1200m CPU request means only one llama pod fits per node, so 3 pods spread over 3 nodes
+# and leave ~700m per node for system DaemonSets and the monitoring stack.
+# Memory: ~0.8 GiB measured idle (1.1 GB model, mmap'd) plus KV cache and buffers for 2 slots.
+resources:
+  requests:
+    cpu: 1200m
+    memory: 2Gi
+  limits:
+    cpu: 2000m # allow bursting to the whole node; inference is CPU-bound
+    memory: 3Gi
+
+# /health returns 503 while the model loads and 200 once it can serve.
+probes:
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    # Generous: avoids restart loops if model load is slow on a cold node.
+    initialDelaySeconds: 120
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70 # percent of the CPU request (70% of 1200m = 840m)
+
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  # kube-prometheus-stack only picks up ServiceMonitors whose labels match its selector,
+  # which by default is `release: <helm release name of the stack>`.
+  labels:
+    release: kube-prometheus-stack
+
+nodeSelector:
+  workload: llm # label set on the EKS managed node group
