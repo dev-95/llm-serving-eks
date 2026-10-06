@@ -9,6 +9,8 @@ module "eks" {
   subnet_ids = module.vpc.public_subnets
 
   # Reach the API from the laptop with kubectl; nodes use the private endpoint.
+  # Module default is already true for private access; set explicitly so it is visible.
+  endpoint_private_access      = true
   endpoint_public_access       = true
   endpoint_public_access_cidrs = var.endpoint_public_access_cidrs
 
@@ -28,6 +30,9 @@ module "eks" {
     kube-proxy             = {}
     coredns                = {}
     eks-pod-identity-agent = {}
+    # Serves the metrics.k8s.io API that the HPA reads pod CPU from. Runs as pods, so it is
+    # installed after the node group (before_compute defaults to false).
+    metrics-server = {}
   }
 
   eks_managed_node_groups = {
