@@ -13,12 +13,13 @@ service:
   port: 8080
 
 # Sized for m5.large nodes (2 vCPU / 8 GiB, ~1930m CPU and ~7.1 GiB allocatable).
-# The 1200m CPU request means only one llama pod fits per node, so 3 pods spread over 3 nodes
-# and leave ~700m per node for system DaemonSets and the monitoring stack.
+# The 1000m CPU request still means only one llama pod fits per node (2 x 1000m > ~1755m left
+# after DaemonSets), so 3 pods spread over 3 nodes and leave ~755m per node for coredns,
+# metrics-server, and the monitoring stack.
 # Memory: ~0.8 GiB measured idle (1.1 GB model, mmap'd) plus KV cache and buffers for 2 slots.
 resources:
   requests:
-    cpu: 1200m
+    cpu: 1000m
     memory: 2Gi
   limits:
     cpu: 2000m # allow bursting to the whole node; inference is CPU-bound
@@ -42,7 +43,7 @@ autoscaling:
   enabled: true
   minReplicas: 1
   maxReplicas: 3
-  targetCPUUtilizationPercentage: 70 # percent of the CPU request (70% of 1200m = 840m)
+  targetCPUUtilizationPercentage: 70 # percent of the CPU request (70% of 1000m = 700m)
 
 serviceMonitor:
   enabled: true
