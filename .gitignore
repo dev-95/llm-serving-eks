@@ -9,3 +9,4 @@ tfplan
 *.tfplan
 .image-tag
 docs/video/
+*:Zone.Identifier
