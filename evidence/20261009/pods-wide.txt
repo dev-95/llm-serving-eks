@@ -1,0 +1,4 @@
+NAME                              READY   STATUS    RESTARTS   AGE   IP           NODE                                       NOMINATED NODE   READINESS GATES
+llm-llm-server-67f44bf6f5-44nbb   1/1     Running   0          42m   10.0.0.211   ip-10-0-0-163.us-east-2.compute.internal   <none>           <none>
+llm-llm-server-67f44bf6f5-j57wp   1/1     Running   0          12m   10.0.1.211   ip-10-0-1-88.us-east-2.compute.internal    <none>           <none>
+llm-llm-server-67f44bf6f5-z75m6   1/1     Running   0          10m   10.0.1.248   ip-10-0-1-23.us-east-2.compute.internal    <none>           <none>

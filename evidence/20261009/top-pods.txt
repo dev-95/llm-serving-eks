@@ -1,0 +1,4 @@
+NAME                              CPU(cores)   MEMORY(bytes)   
+llm-llm-server-67f44bf6f5-44nbb   2m           1196Mi          
+llm-llm-server-67f44bf6f5-j57wp   1m           1176Mi          
+llm-llm-server-67f44bf6f5-z75m6   1m           1174Mi          
