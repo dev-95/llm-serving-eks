@@ -142,7 +142,7 @@ Confirm that Prometheus is scraping it:
 ```bash
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090 >/dev/null &
 PF_PROM=$!; sleep 3
-curl -s 'localhost:9090/api/v1/query?query=up{service="llm-llm-server"}' | python3 -m json.tool
+curl -s --get localhost:9090/api/v1/query --data-urlencode 'query=up{service="llm-llm-server"}' | python3 -m json.tool
 # Expect one result per pod with value "1". Keep this port-forward open for step 9.
 ```
 
