@@ -1,0 +1,79 @@
+{
+  "title": "LLM Serving (llama-server on EKS)",
+  "uid": "llm-serving-eks",
+  "tags": ["llm-serving-eks"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Prometheus",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Tokens/sec (all pods)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(llamacpp:tokens_predicted_total[1m]))", "legendFormat": "tokens/sec" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Requests processing vs deferred",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(llamacpp:requests_processing)", "legendFormat": "processing" },
+        { "refId": "B", "expr": "sum(llamacpp:requests_deferred)", "legendFormat": "deferred" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Pod CPU (cores)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"default\",container=\"llm-server\"}[1m]))", "legendFormat": "{{pod}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Pod memory (working set)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"default\",container=\"llm-server\"})", "legendFormat": "{{pod}}" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Pods available vs HPA desired",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 4, "decimals": 0 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kube_deployment_status_replicas_available{deployment=\"llm-llm-server\"}", "legendFormat": "available pods" },
+        { "refId": "B", "expr": "kube_horizontalpodautoscaler_status_desired_replicas{horizontalpodautoscaler=\"llm-llm-server\"}", "legendFormat": "HPA desired" }
+      ]
+    }
+  ]
+}
