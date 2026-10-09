@@ -12,7 +12,7 @@ service:
   type: ClusterIP # reach it with kubectl port-forward; switch to LoadBalancer only when needed (costs money)
   port: 8080
 
-# Sized for m5.large nodes (2 vCPU / 8 GiB, ~1930m CPU and ~7.1 GiB allocatable).
+# Sized for m7i-flex.large nodes (2 vCPU / 8 GiB, ~1930m CPU and ~7.1 GiB allocatable).
 # The 1000m CPU request still means only one llama pod fits per node (2 x 1000m > ~1755m left
 # after DaemonSets), so 3 pods spread over 3 nodes and leave ~755m per node for coredns,
 # metrics-server, and the monitoring stack.

@@ -2,7 +2,7 @@
 
 The exact command sequence for one working session on AWS. Run from the repo root in WSL.
 Budget: plan for about 3 hours. Rough on-demand cost while up: EKS control plane $0.10/h +
-3 × m5.large ~$0.29/h + public IPv4 and EBS, about **$0.45/h** in total. Don't leave it running.
+3 × m7i-flex.large ~$0.29/h + public IPv4 and EBS, about **$0.45/h** in total. Don't leave it running.
 
 Rules: review every plan before applying it. Never paste command output that contains the
 12-digit account ID (ECR URLs, ARNs) into the repo, README, or screenshots.
@@ -70,7 +70,7 @@ TAG="b11429-qwen2.5-1.5b-q4km-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%
 echo "$TAG"
 
 aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_URL%%/*}"
-docker build --platform linux/amd64 -t "$ECR_URL:$TAG" docker/   # m5 nodes are x86_64
+docker build --platform linux/amd64 -t "$ECR_URL:$TAG" docker/   # m7i-flex nodes are x86_64
 docker push "$ECR_URL:$TAG"
 
 aws ecr describe-images --repository-name llm-serving-eks/llm-server \

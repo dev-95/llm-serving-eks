@@ -13,7 +13,7 @@
 #     -o jsonpath='{.data.admin-password}' | base64 -d
 #
 # Sizing: the chart sets no requests by default, so the scheduler would treat these pods as free.
-# Explicit requests keep the m5.large budget honest: ~755m CPU per node is left after the
+# Explicit requests keep the m7i-flex.large budget honest: ~755m CPU per node is left after the
 # llm-server pod (1000m) and DaemonSets. Requests below total ~375m CPU cluster-wide plus 25m per
 # node for node-exporter.
 

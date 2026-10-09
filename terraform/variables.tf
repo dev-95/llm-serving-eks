@@ -23,9 +23,9 @@ variable "vpc_cidr" {
 }
 
 variable "node_instance_types" {
-  description = "Instance types for the managed node group. CPU inference needs RAM, so 8 GiB t3.large."
+  description = "Instance types for the managed node group. CPU inference needs RAM, so 8 GiB m7i-flex.large (Free plan accounts only allow Free Tier-eligible types)."
   type        = list(string)
-  default     = ["t3.large"]
+  default     = ["m7i-flex.large"]
 }
 
 variable "node_min_size" {
