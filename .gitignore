@@ -8,3 +8,4 @@ __pycache__/
 tfplan
 *.tfplan
 .image-tag
+docs/video/
